@@ -1,3 +1,10 @@
+#-------------------
+# BME280/BMP280 Sensor Driver Library
+# Provides a MicroPython driver for the Bosch BME280/BMP280 sensor.
+# Supports reading temperature, pressure, and humidity via I2C.
+# Includes calibration data handling and compensated readings.
+#-------------------
+
 from machine import I2C
 import time
 

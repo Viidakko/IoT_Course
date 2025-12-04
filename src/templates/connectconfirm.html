@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connection Successful</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>{{CSS}}</style>
+</head>
+<body>
+    <main class="container">
+        <h1 class="success-title">Connected!</h1>
+        <p class="subtitle">Successfully connected to <strong>{{SSID}}</strong></p>
+        
+        <div class="info">
+            Your weather station will be available at:
+            <div class="ip">http://{{FULL_IP}}</div>
+        </div>
+        
+        <div class="warning">
+            After confirming, connect your device to <strong>{{SSID}}</strong> 
+            to access the weather station.
+        </div>
+        
+        <a href="/confirm" class="btn">Confirm & Start</a>
+        <a href="/cancel" class="btn btn-danger">Cancel</a>
+    </main>
+</body>
+</html>

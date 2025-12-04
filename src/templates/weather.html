@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pico W Weather Station</title>
+    <meta http-equiv="refresh" content="{{REFRESH_INTERVAL}}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+{{CSS}}
+        .temp { background: {{TEMP_COLOR}}; box-shadow: 0 0 1.25rem {{TEMP_COLOR}}; }
+        .pressure { background: {{PRES_COLOR}}; box-shadow: 0 0 1.25rem {{PRES_COLOR}}; }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Weather Station</h1>
+        </header>
+        
+        <div class="readings-grid" role="region" aria-label="Weather readings">
+            <article class="reading temp">
+                <div class="reading-label">Temperature</div>
+                <div class="value" aria-live="polite">{{TEMPERATURE}}</div>
+                <div class="status">{{TEMP_STATUS}}</div>
+            </article>
+            
+            <article class="reading pressure">
+                <div class="reading-label">Pressure</div>
+                <div class="value" aria-live="polite">{{PRESSURE}}</div>
+                <div class="status">{{PRES_STATUS}}</div>
+            </article>
+        </div>
+        
+        <p class="footer">Auto-refresh every {{REFRESH_INTERVAL}} seconds</p>
+        
+        <div class="network-info">
+            <span>Connected to: <strong>{{SSID}}</strong></span>
+            <span>IP Address: <strong>{{IP_ADDRESS}}</strong></span>
+        </div>
+        
+        <form action="/logout" method="GET">
+            <button type="submit" class="btn-danger" 
+                    onclick="return confirm('Disconnect and return to setup mode?')">
+                Logout / Change Wi-Fi
+            </button>
+        </form>
+    </main>
+</body>
+</html>

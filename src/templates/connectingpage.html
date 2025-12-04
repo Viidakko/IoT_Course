@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connecting...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>{{CSS}}</style>
+</head>
+<body>
+    <main class="container">
+        <h1>Connecting...</h1>
+        <p class="subtitle">Trying to connect to <strong>{{SSID}}</strong></p>
+        <div class="info" style="margin-top:0">Please wait, this may take up to 15 seconds.</div>
+    </main>
+    <script>
+        function checkConnection() {
+            fetch('/', {
+                method: 'HEAD',  // Just check if server responds, don't get content
+                cache: 'no-cache'
+            })
+            .then(() => {
+                // Server is back - do a FULL PAGE RELOAD to get the error/success page
+                window.location.reload();
+            })
+            .catch(() => {
+                // Server still closed - try again in 2 seconds
+                setTimeout(checkConnection, 2000);
+            });
+        }
+        
+        // Start checking after 3 seconds
+        setTimeout(checkConnection, 3000);
+    </script>
+</body>
+</html>

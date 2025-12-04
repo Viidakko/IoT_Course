@@ -1,0 +1,407 @@
+/* ========================================
+   Pico W Weather Station
+   Mobile-first, fluid, minimal
+   ======================================== */
+
+/* ==================
+   Variables
+   ================== */
+:root {
+    /* Colors */
+    --c-primary:      #44ff44;
+    --c-primary-dark: #32cd32;
+    --c-danger:       #ff4444;
+    --c-danger-dark:  #cc3333;
+    --c-warning:      #ffcc00;
+    --c-bg:           linear-gradient(135deg, #1a1a2e, #16213e);
+    --c-text:         #fff;
+    --c-muted:        #888;
+    --c-dim:          #ccc;
+    --c-overlay:      rgba(255, 255, 255, 0.1);
+    --c-overlay-dark: rgba(0, 0, 0, 0.3);
+    
+    /* Spacing (fluid) */
+    --s-xs: clamp(0.20rem, 0.5vw, 0.35rem);
+    --s-sm: clamp(0.40rem, 1.0vw, 0.60rem);
+    --s-md: clamp(0.75rem, 2.0vw, 1.25rem);
+    --s-lg: clamp(1.00rem, 3.0vw, 1.75rem);
+    --s-xl: clamp(1.50rem, 4.0vw, 2.50rem);
+    
+    /* Typography (fluid) */
+    --t-xs:   clamp(0.70rem, 1.5vw, 0.80rem);
+    --t-sm:   clamp(0.80rem, 2.0vw, 0.95rem);
+    --t-base: clamp(0.90rem, 2.5vw, 1.10rem);
+    --t-lg:   clamp(1.00rem, 3.0vw, 1.25rem);
+    --t-xl:   clamp(1.20rem, 4.0vw, 1.75rem);
+    --t-2xl:  clamp(1.50rem, 5.0vw, 2.25rem);
+    --t-3xl:  clamp(1.80rem, 6.0vw, 3.00rem);
+    
+    /* Border Radius */
+    --r-sm: 0.50rem;
+    --r-md: 0.75rem;
+    --r-lg: 1.00rem;
+    
+    /* Misc */
+    --transition: 0.2s ease;
+}
+
+
+/* ==================
+   Reset
+   ================== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+
+/* ==================
+   Base / Body
+   ================== */
+body {
+    font-family: Arial, sans-serif;
+    background: var(--c-bg);
+    color: var(--c-text);
+    line-height: 1.5;
+    
+    margin: 0;
+    padding: var(--s-lg);
+    min-height: 100vh;
+    min-height: 100dvh;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* ==================
+   Typography
+   ================== */
+h1 {
+    margin: 0 0 var(--s-sm);
+    font-size: var(--t-xl);
+}
+
+.subtitle {
+    margin: 0;
+    font-size: var(--t-sm);
+    color: var(--c-muted);
+}
+
+.success-title {
+    font-size: var(--t-2xl);
+    color: var(--c-primary);
+}
+
+.logout-title {
+    color: var(--c-danger);
+}
+
+
+/* ==================
+   Layout
+   ================== */
+.container {
+    width: min(100%, clamp(20rem, 50vw, 36rem));
+    padding: var(--s-xl);
+    background: var(--c-overlay);
+    border-radius: var(--r-lg);
+}
+
+main {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+
+/* ==================
+   Forms
+   ================== */
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: var(--s-md);
+    margin: var(--s-sm) 0;
+    
+    font-size: var(--t-base);
+    color: #333;
+    background: rgba(255, 255, 255, 0.9);
+    
+    border: none;
+    border-radius: var(--r-sm);
+}
+
+input:focus {
+    outline: 0.125rem solid var(--c-primary);
+    outline-offset: 0.125rem;
+}
+
+
+/* ==================
+   Buttons
+   ================== */
+button,
+.btn {
+    display: block;
+    width: 100%;
+    padding: var(--s-md);
+    margin-top: var(--s-md);
+    
+    font-size: var(--t-lg);
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    color: #000;
+    
+    background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark));
+    border: none;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    
+    transition: transform var(--transition);
+}
+
+button:hover,
+.btn:hover {
+    transform: scale(1.02);
+}
+
+button:active,
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-danger {
+    color: var(--c-text);
+    background: linear-gradient(135deg, var(--c-danger), var(--c-danger-dark));
+}
+
+
+/* ==================
+   Info Boxes
+   ================== */
+.info {
+    width: 100%;
+    padding: var(--s-md);
+    margin-top: var(--s-md);
+    
+    font-size: var(--t-sm);
+    text-align: center;
+    
+    background: var(--c-overlay-dark);
+    border-radius: var(--r-sm);
+}
+
+.info p {
+    margin: var(--s-sm) 0;
+}
+
+.ip {
+    font-size: var(--t-lg);
+    font-weight: bold;
+    color: var(--c-primary);
+}
+
+.error {
+    padding: var(--s-md);
+    margin-bottom: var(--s-lg);
+    
+    font-weight: bold;
+    text-align: center;
+    
+    background: var(--c-danger);
+    border-radius: var(--r-sm);
+}
+
+.warning {
+    padding: var(--s-md);
+    margin: 0;
+    margin-top: var(--s-lg);
+    
+    text-align: center;
+    color: var(--c-warning);
+    
+    background: rgba(255, 200, 0, 0.2);
+    border: 1px solid var(--c-warning);
+    border-radius: var(--r-sm);
+}
+
+.step {
+    margin: var(--s-sm) 0;
+    color: var(--c-dim);
+}
+
+
+/* ==================
+   Weather Readings
+   ================== */
+.readings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--s-lg);
+    width: min(100%, clamp(20rem, 70vw, 56rem));
+}
+
+.reading {
+    padding: var(--s-xl);
+    text-align: center;
+    color: #000;
+    border-radius: var(--r-lg);
+}
+
+.reading-label {
+    font-size: var(--t-base);
+    font-weight: 500;
+}
+
+.value {
+    margin: var(--s-sm) 0;
+    font-size: var(--t-3xl);
+    font-weight: bold;
+}
+
+.status {
+    font-size: var(--t-sm);
+    opacity: 0.8;
+}
+
+.footer {
+    margin-top: var(--s-lg);
+    font-size: var(--t-sm);
+    opacity: 0.7;
+}
+
+.network-info {
+    padding: var(--s-sm) var(--s-lg);
+    margin-top: var(--s-sm);
+    
+    font-size: var(--t-sm);
+    text-align: center;
+    color: var(--c-muted);
+    width: min(100%, clamp(20rem, 70vw, 56rem));
+    
+    display: flex;
+    justify-content: center;
+    gap: var(--s-xl);
+    
+    background: var(--c-overlay);
+    border-radius: var(--r-sm);
+}
+
+.network-info strong {
+    color: var(--c-primary);
+}
+
+/* ==================
+   IP Configuration
+   ================== */
+.ip-config {
+    padding: var(--s-md);
+    margin: var(--s-md) 0;
+    
+    text-align: center;
+    
+    background: var(--c-overlay-dark);
+    border-radius: var(--r-md);
+}
+
+.ip-config-title {
+    margin-bottom: var(--s-md);
+    font-size: var(--t-sm);
+    color: var(--c-muted);
+}
+
+.ip-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-xs);
+}
+
+.ip-octet {
+    min-width: 2.25rem;
+    padding: var(--s-sm) var(--s-xs);
+    
+    font-family: monospace;
+    font-size: var(--t-base);
+    text-align: center;
+    color: var(--c-dim);
+    
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: var(--r-sm);
+}
+
+.ip-dot {
+    font-size: var(--t-lg);
+    color: var(--c-muted);
+}
+
+.ip-editable {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ip-arrow {
+    width: auto;
+    padding: var(--s-xs) var(--s-sm);
+    margin: 0;
+    
+    font-size: var(--t-base);
+    color: var(--c-primary);
+    
+    background: rgba(68, 255, 68, 0.3);
+    border: none;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    
+    transition: background var(--transition);
+}
+
+.ip-arrow:hover {
+    background: rgba(68, 255, 68, 0.5);
+}
+
+.ip-value {
+    min-width: 2.5rem;
+    padding: var(--s-sm) var(--s-xs);
+    margin: var(--s-xs) 0;
+    
+    font-family: monospace;
+    font-size: var(--t-base);
+    font-weight: bold;
+    text-align: center;
+    color: var(--c-primary);
+    
+    background: rgba(68, 255, 68, 0.2);
+    border: 0.125rem solid var(--c-primary);
+    border-radius: var(--r-sm);
+}
+
+.ip-hint {
+    margin-top: var(--s-sm);
+    font-size: var(--t-xs);
+    color: #666;
+}
+
+
+/* ==================
+   Accessibility
+   ================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+    }
+}
+
+:focus-visible {
+    outline: 0.125rem solid var(--c-primary);
+    outline-offset: 0.125rem;
+}

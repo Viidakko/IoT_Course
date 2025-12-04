@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pico W Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>{{CSS}}</style>
+</head>
+<body>
+    <main class="container">
+        <h1>Pico W Setup</h1>
+        <p class="subtitle"style="margin-bottom:var(--s-md)">Weather Station Configuration</p>
+        
+        {{ERROR_HTML}}
+        
+        <form action="/save" method="GET">
+            <input type="text" name="ssid" placeholder="Wi-Fi Network Name" required>
+            <input type="password" name="password" placeholder="Wi-Fi Password" required>
+            
+            <div class="ip-config">
+                <div class="ip-config-title">Static IP Address</div>
+                <div class="ip-row">
+                    <span class="ip-octet">{{IP_PART_0}}</span>
+                    <span class="ip-dot">.</span>
+                    <span class="ip-octet">{{IP_PART_1}}</span>
+                    <span class="ip-dot">.</span>
+                    <span class="ip-octet">{{IP_PART_2}}</span>
+                    <span class="ip-dot">.</span>
+                    <div class="ip-editable">
+                        <button type="button" class="ip-arrow" onclick="changeIP(1)">+</button>
+                        <div class="ip-value" id="ipLast">{{IP_LAST}}</div>
+                        <button type="button" class="ip-arrow" onclick="changeIP(-1)">-</button>
+                    </div>
+                </div>
+                <div class="ip-hint">Use arrows to set last number (2-254)</div>
+                <input type="hidden" name="ip_last" id="ipLastInput" value="{{IP_LAST}}">
+            </div>
+            
+            <button type="submit">Connect</button>
+        </form>
+        
+        <div class="info">
+            After connecting, access your weather station at:
+            <div class="ip">http://{{IP_PREFIX}}.<span id="displayIPLast">{{IP_LAST}}</span></div>
+        </div>
+    </main>
+    
+    <script>
+        let ipLast = {{IP_LAST}};
+        function changeIP(d) {
+            ipLast = Math.min(254, Math.max(2, ipLast + d));
+            document.getElementById('ipLast').textContent = ipLast;
+            document.getElementById('ipLastInput').value = ipLast;
+            document.getElementById('displayIPLast').textContent = ipLast;
+        }
+    </script>
+</body>
+</html>

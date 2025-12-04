@@ -1,7 +1,14 @@
+#-------------------
+# Main IoT Application
+# Connects Pico W to Wi-Fi and an MQTT broker over TLS.
+# Subscribes to 'picow/control' topic to receive LED control commands.
+# Blinks LED patterns to indicate connection status and received messages.
+#-------------------
+
 from machine import Pin, I2C
 import network
 import time
-from bme import BME280
+from bmp280 import BME280
 from umqtt.simple import MQTTClient
 import ssl
 import config
