@@ -49,12 +49,15 @@ def delete_credentials():
 
 def send_html_chunked(conn, content):
     """Send HTML response in chunks to avoid buffer overflow."""
+    
+    start_time = time.ticks_ms()
+    
     conn.send('HTTP/1.1 200 OK\r\n')
     conn.send('Content-Type: text/html\r\n')
     conn.send('Connection: close\r\n\r\n')
     
     # Send in 512-byte chunks
-    chunk_size = 512
+    chunk_size = config.CHUNK_SIZE
     total_sent = 0
     
     for i in range(0, len(content), chunk_size):
@@ -68,7 +71,9 @@ def send_html_chunked(conn, content):
             sent += conn.send(remaining)
             total_sent += sent
     
-    print(f"[HTTP] Sent {total_sent}/{len(content)} bytes")
+    end_time = time.ticks_ms()
+    
+    print(f"[HTTP] Sent {total_sent}/{len(content)} bytes in {end_time - start_time}ms")
     conn.close()
 
 

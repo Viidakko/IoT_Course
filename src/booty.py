@@ -89,7 +89,7 @@ def send_html(conn, content):
     conn.send('Connection: close\r\n\r\n')
     
     # Send in 512-byte chunks to avoid buffer overflow
-    chunk_size = 512
+    chunk_size = config.CHUNK_SIZE
     total_sent = 0
     
     for i in range(0, len(content), chunk_size):
