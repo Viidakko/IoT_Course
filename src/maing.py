@@ -2,8 +2,8 @@
 # Main IoT Application
 # Serves weather station page over HTTP.
 # Handles logout to return to AP mode.
+# Encrypted sensor data transmission
 #-------------------
-
 from machine import Pin, I2C, reset
 import network
 import socket
@@ -13,6 +13,7 @@ import os
 import config
 import html
 from bmp280 import BME280
+import encrypt_utils
 
 led_pin = Pin('LED', Pin.OUT)
 CREDENTIALS_FILE = 'credentials.json'
@@ -21,10 +22,15 @@ CREDENTIALS_FILE = 'credentials.json'
 wlan = network.WLAN(network.STA_IF)
 ip_address = wlan.ifconfig()[0]
 
-# Load saved network info
+# Load saved network info (with decryption)
 try:
     with open(CREDENTIALS_FILE, 'r') as f:
         creds = json.load(f)
+        
+    # Check if encrypted
+    if 'encrypted' in creds and creds['encrypted']:
+        current_ssid = encrypt_utils.decrypt_data(creds['ssid'])
+    else:
         current_ssid = creds.get('ssid', 'Unknown')
 except:
     current_ssid = 'Unknown'
@@ -38,14 +44,13 @@ i2c = I2C(id=1, sda=Pin(2), scl=Pin(3))
 bmp = BME280(i2c=i2c)
 print('[MAIN] BMP280 initialized')
 
-
 def delete_credentials():
+    """Delete stored credentials."""
     try:
         os.remove(CREDENTIALS_FILE)
         print('[MAIN] Credentials deleted')
     except:
         pass
-
 
 def send_html_chunked(conn, content):
     """Send HTML response in chunks to avoid buffer overflow."""
@@ -59,7 +64,6 @@ def send_html_chunked(conn, content):
     # Send in 512-byte chunks
     chunk_size = config.CHUNK_SIZE
     total_sent = 0
-    
     for i in range(0, len(content), chunk_size):
         chunk = content[i:i+chunk_size]
         sent = conn.send(chunk)
@@ -76,6 +80,15 @@ def send_html_chunked(conn, content):
     print(f"[HTTP] Sent {total_sent}/{len(content)} bytes in {end_time - start_time}ms")
     conn.close()
 
+def send_json_response(conn, data):
+    """Send JSON response with optional encryption."""
+    response = json.dumps(data)
+    
+    conn.send('HTTP/1.1 200 OK\r\n')
+    conn.send('Content-Type: application/json\r\n')
+    conn.send('Connection: close\r\n\r\n')
+    conn.send(response)
+    conn.close()
 
 def get_sensor_html():
     """Read sensor data and generate HTML."""
@@ -92,6 +105,7 @@ def get_sensor_html():
     except:
         pres_val = 0
     
+    # Determine temperature status
     if temp_val > config.TEMP_HIGH:
         temp_color = '#ff4444'
         temp_status = 'HOT'
@@ -102,6 +116,7 @@ def get_sensor_html():
         temp_color = '#44ff44'
         temp_status = 'NORMAL'
     
+    # Determine pressure status
     if pres_val < config.PRESSURE_LOW:
         pres_color = '#ffaa00'
         pres_status = 'LOW'
@@ -118,15 +133,14 @@ def get_sensor_html():
         ip_address, current_ssid
     )
 
-
-# Create HTTP server
+# Create HTTP server (no SSL)
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 server = socket.socket()
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(addr)
 server.listen(1)
-print(f'[MAIN] Server: http://{ip_address}')
 
+print(f'[MAIN] Server: http://{ip_address}')
 led_pin.on()
 
 # Main loop
@@ -135,12 +149,11 @@ while True:
         conn, client_addr = server.accept()
         request = conn.recv(1024).decode()
         
+        # ===== Logout endpoint =====
         if 'GET /logout' in request:
             print('[MAIN] Logout requested')
-            
             response = html.render_logout()
-            send_html_chunked(conn, response)  # ← Use chunked sending
-            
+            send_html_chunked(conn, response)
             time.sleep(1)
             delete_credentials()
             server.close()
@@ -150,20 +163,56 @@ while True:
             exec(open('booty.py').read())
             break
         
+        # ===== API endpoint for encrypted sensor data (NEW) =====
+        elif 'GET /api/sensor' in request:
+            print('[API] Sensor data request')
+            
+            # Read sensor data
+            temp = bmp.temperature
+            pressure = bmp.pressure
+            timestamp = time.time()
+            
+            # Check if encrypted response is requested
+            if 'encrypted=true' in request or 'encrypted=1' in request:
+                # Encrypt sensor data
+                encrypted_payload = encrypt_utils.encrypt_sensor_data(
+                    temp, pressure, timestamp
+                )
+                
+                if encrypted_payload:
+                    send_json_response(conn, {
+                        'encrypted': True,
+                        'data': encrypted_payload
+                    })
+                    print('[API] Sent encrypted sensor data')
+                else:
+                    send_json_response(conn, {'error': 'Encryption failed'})
+            else:
+                # Send plaintext JSON
+                send_json_response(conn, {
+                    'encrypted': False,
+                    'temperature': temp,
+                    'pressure': pressure,
+                    'timestamp': timestamp
+                })
+                print('[API] Sent plaintext sensor data')
+            continue
+        
+        # ===== Favicon =====
         elif 'GET /favicon' in request:
             conn.send('HTTP/1.1 204 No Content\r\n\r\n')
             conn.close()
         
+        # ===== Main page =====
         else:
             response = get_sensor_html()
-            send_html_chunked(conn, response)  # ← Use chunked sending
-        
-        
+            send_html_chunked(conn, response)
+    
     except Exception as e:
         print(f'[ERROR] {e}')
         try:
             conn.close()
         except:
             pass
-
+    
     time.sleep_ms(50)
