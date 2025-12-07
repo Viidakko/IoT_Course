@@ -1,43 +1,37 @@
 #-------------------
 # Boot Script
 # Manages Wi-Fi connection or Access Point mode.
+# Encrypted credential storage
 #-------------------
-
 import sys
 import os
 import network
 import time
 import json
 import socket
-from machine import Pin
+from machine import Pin, reset
 import config
 import html
-
+import encrypt_utils
 
 # ==================
 # Constants
 # ==================
-
 CREDENTIALS_FILE = 'credentials.json'
 STAT_GOT_IP = 3
-
 
 # ==================
 # Globals
 # ==================
-
 led = Pin('LED', Pin.OUT)
 sta = network.WLAN(network.STA_IF)
 ap = network.WLAN(network.AP_IF)
-
 sta.active(False)
 ap.active(False)
-
 
 # ==================
 # LED Utilities
 # ==================
-
 def blink(times, speed=200):
     """Blink LED a number of times."""
     for _ in range(times):
@@ -46,74 +40,113 @@ def blink(times, speed=200):
         led.off()
         time.sleep_ms(speed)
 
-
 # ==================
-# Credentials
+# Credentials (UPDATED WITH ENCRYPTION)
 # ==================
-
 def load_credentials():
-    """Load saved WiFi credentials."""
+    """Load and decrypt saved WiFi credentials."""
     try:
         with open(CREDENTIALS_FILE, 'r') as f:
-            return json.load(f)
-    except (OSError, ValueError):
+            data = json.load(f)
+        
+        # Check if credentials are encrypted (new format)
+        if 'encrypted' in data and data['encrypted']:
+            # Decrypt sensitive data
+            ssid = encrypt_utils.decrypt_data(data['ssid'])
+            password = encrypt_utils.decrypt_data(data['password'])
+            
+            if ssid is None or password is None:
+                print('[CREDS] Decryption failed')
+                return None
+            
+            return {
+                'ssid': ssid,
+                'password': password,
+                'static_ip': data.get('static_ip', config.STATIC_IP)
+            }
+        else:
+            # Old format (plaintext) - return as is
+            print('[CREDS] Warning: Using plaintext credentials')
+            return data
+            
+    except (OSError, ValueError, KeyError) as e:
+        print(f'[CREDS] Load error: {e}')
         return None
 
-
 def save_credentials(ssid, password, static_ip):
-    """Save WiFi credentials to file."""
+    """Save encrypted WiFi credentials to file."""
+    # Encrypt sensitive data
+    encrypted_ssid = encrypt_utils.encrypt_data(ssid)
+    encrypted_password = encrypt_utils.encrypt_data(password)
+    
+    if encrypted_ssid is None or encrypted_password is None:
+        print('[CREDS] Encryption failed, not saving')
+        return False
+    
     with open(CREDENTIALS_FILE, 'w') as f:
         json.dump({
-            'ssid': ssid,
-            'password': password,
+            'encrypted': True,
+            'ssid': encrypted_ssid,
+            'password': encrypted_password,
             'static_ip': static_ip
         }, f)
-
+    print('[CREDS] Saved encrypted credentials')
+    return True
 
 def delete_credentials():
     """Remove saved credentials file."""
     try:
         os.remove(CREDENTIALS_FILE)
+        print('[CREDS] Deleted credentials file')
     except OSError:
         pass
-
 
 # ==================
 # HTTP Helpers
 # ==================
-
 def send_html(conn, content):
     """Send HTML response in chunks."""
-    conn.send('HTTP/1.1 200 OK\r\n')
-    conn.send('Content-Type: text/html\r\n')
-    conn.send('Connection: close\r\n\r\n')
-    
-    # Send in 512-byte chunks to avoid buffer overflow
-    chunk_size = 512
-    total_sent = 0
-    
-    for i in range(0, len(content), chunk_size):
-        chunk = content[i:i+chunk_size]
-        sent = conn.send(chunk)
-        total_sent += sent
+    try:
+        conn.send('HTTP/1.1 200 OK\r\n')
+        conn.send('Content-Type: text/html\r\n')
+        conn.send('Connection: close\r\n\r\n')
         
-        # If partial send, retry the rest
-        while sent < len(chunk):
-            remaining = chunk[sent:]
-            sent += conn.send(remaining)
+        # Send in 512-byte chunks to avoid buffer overflow
+        chunk_size = 512
+        total_sent = 0
+        for i in range(0, len(content), chunk_size):
+            chunk = content[i:i+chunk_size]
+            sent = conn.send(chunk)
             total_sent += sent
-    
-    print(f"[HTTP] Sent {total_sent}/{len(content)} bytes")
-    conn.close()
-
+            
+            # If partial send, retry the rest
+            while sent < len(chunk):
+                remaining = chunk[sent:]
+                sent += conn.send(remaining)
+                total_sent += sent
+        
+        print(f"[HTTP] Sent {total_sent}/{len(content)} bytes")
+    except Exception as e:
+        print(f'[HTTP] Send error: {e}')
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
 
 def send_redirect(conn, location):
     """Send redirect response."""
-    conn.send('HTTP/1.1 302 Found\r\n')
-    conn.send(f'Location: {location}\r\n')
-    conn.send('Connection: close\r\n\r\n')
-    conn.close()
-
+    try:
+        conn.send('HTTP/1.1 302 Found\r\n')
+        conn.send(f'Location: {location}\r\n')
+        conn.send('Connection: close\r\n\r\n')
+    except Exception as e:
+        print(f'[HTTP] Redirect error: {e}')
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
 
 def url_decode(s):
     """Decode URL-encoded string."""
@@ -127,14 +160,12 @@ def url_decode(s):
             decoded += '%' + part
     return decoded
 
-
 # ==================
 # Network Functions
 # ==================
-
 def start_station_mode(ssid, password, static_ip=None, timeout=15, keep_ap=False):
-    """Connect to Wi-Fi network.
-    
+    """
+    Connect to Wi-Fi network.
     Returns IP address on success, None on failure.
     """
     global sta, ap
@@ -166,7 +197,6 @@ def start_station_mode(ssid, password, static_ip=None, timeout=15, keep_ap=False
     sta.active(False)
     return None
 
-
 def start_ap_mode():
     """Start Access Point and serve setup page."""
     global sta, ap
@@ -184,33 +214,40 @@ def start_ap_mode():
     
     print(f'[AP] Started: {config.AP_SSID}')
     print(f'[AP] Open: http://192.168.4.1')
-    
     serve_setup_page()
-
 
 # ==================
 # Main Server
 # ==================
-
 def serve_setup_page():
     """Serve Wi-Fi configuration page."""
-    
     ip_parts = config.STATIC_IP.split('.')
     ip_prefix = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}"
     
-    addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-    server = socket.socket()
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(addr)
-    server.listen(1)
-
     # State
-    pending_creds = None    # Verified credentials awaiting confirmation
-    show_error = False      # Show error on next page load
-    testing_creds = None    # Credentials being tested
+    pending_creds = None
+    show_error = False
+    testing_creds = None
+    
+    # Create server socket
+    server = None
     
     while True:
         try:
+            # FIXED: Create or recreate server socket if needed
+            if server is None:
+                try:
+                    addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+                    server = socket.socket()
+                    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    server.bind(addr)
+                    server.listen(1)
+                    print('[AP] Server socket created')
+                except Exception as e:
+                    print(f'[AP] Socket create error: {e}')
+                    time.sleep(2)
+                    continue
+            
             conn, addr = server.accept()
             request = conn.recv(1024).decode()
             
@@ -241,11 +278,14 @@ def serve_setup_page():
                 if testing_creds:
                     # Show connecting page
                     send_html(conn, html.render_connecting(testing_creds['ssid']))
-                    
                     print(f'[AP] Testing: {testing_creds["ssid"]} @ {testing_creds["static_ip"]}')
                     
-                    # Close server during test
-                    server.close()
+                    # FIXED: Close server and set to None
+                    try:
+                        server.close()
+                    except:
+                        pass
+                    server = None
                     
                     # Test connection
                     ip = start_station_mode(
@@ -255,23 +295,18 @@ def serve_setup_page():
                         keep_ap=True
                     )
                     
-                    # Recreate server
-                    server = socket.socket()
-                    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    server.bind(socket.getaddrinfo('0.0.0.0', 80)[0][-1])
-                    server.listen(1)
-                    
                     led.off()
                     
                     if ip:
                         print('[AP] Test successful!')
                         pending_creds = testing_creds
-                        sta.active(False)  # Disconnect STA, keep AP
+                        sta.active(False)
                     else:
                         print('[AP] Connection failed!')
                         show_error = True
                     
                     testing_creds = None
+                    # Server will be recreated in next loop iteration
                     continue
                 else:
                     send_redirect(conn, '/')
@@ -282,17 +317,30 @@ def serve_setup_page():
                 if pending_creds:
                     print('[AP] Confirmed! Saving and starting main...')
                     
-                    save_credentials(
+                    # Try to save credentials
+                    save_result = save_credentials(
                         pending_creds['ssid'],
                         pending_creds['password'],
                         pending_creds['static_ip']
                     )
                     
-                    send_html(conn, html.render_success(pending_creds['static_ip']))
+                    if not save_result:
+                        # Encryption failed, show error and restart device
+                        print('[AP] CRITICAL: Encryption failed! Restarting device...')
+                        send_html(conn, html.render_setup("Encryption error! Device will restart."))
+                        time.sleep(3)
+                        reset()
                     
+                    send_html(conn, html.render_success(pending_creds['static_ip']))
                     time.sleep(2)
                     
-                    server.close()
+                    # FIXED: Close server properly
+                    try:
+                        server.close()
+                    except:
+                        pass
+                    server = None
+                    
                     ap.active(False)
                     
                     ip = start_station_mode(
@@ -307,11 +355,11 @@ def serve_setup_page():
                         if 'maing' in sys.modules:
                             del sys.modules['maing']
                         exec(open('maing.py').read())
-                    return
+                        return
                 else:
                     send_redirect(conn, '/')
                     continue
-
+            
             # ===== User cancels =====
             elif 'GET /cancel' in request:
                 print('[AP] Cancelled')
@@ -320,11 +368,14 @@ def serve_setup_page():
                 show_error = False
                 send_redirect(conn, '/')
                 continue
-
+            
             # ===== Favicon =====
             elif 'favicon' in request:
-                conn.send('HTTP/1.1 204 No Content\r\n\r\n')
-                conn.close()
+                try:
+                    conn.send('HTTP/1.1 204 No Content\r\n\r\n')
+                    conn.close()
+                except:
+                    pass
             
             # ===== Main page =====
             else:
@@ -338,21 +389,38 @@ def serve_setup_page():
                     show_error = False
                 else:
                     send_html(conn, html.render_setup())
-            
-            led.toggle()
-            
+                
+                led.toggle()
+        
+        except OSError as e:
+            # FIXED: Handle EBADF by recreating socket
+            if e.errno == 9:  # EBADF
+                print('[AP] Socket error (EBADF), recreating...')
+                try:
+                    if server:
+                        server.close()
+                except:
+                    pass
+                server = None
+                time.sleep(1)
+            else:
+                print(f'[AP ERROR] OSError {e.errno}: {e}')
+                try:
+                    conn.close()
+                except:
+                    pass
+                time.sleep_ms(100)
         except Exception as e:
             print(f'[AP ERROR] {e}')
             try:
                 conn.close()
             except:
                 pass
-
+            time.sleep_ms(100)
 
 # ==================
 # Boot Entry Point
 # ==================
-
 print('\n[BOOT] Pico W Weather Station')
 print('[BOOT] ========================')
 blink(2)

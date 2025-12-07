@@ -8,9 +8,9 @@ AP_PASSWORD = ''
 
 # Static IP settings
 USE_STATIC_IP = True
-STATIC_IP = '192.168.1.100'
+STATIC_IP = '192.168.68.110'
 SUBNET_MASK = '255.255.255.0'
-GATEWAY = '192.168.1.1'
+GATEWAY = '192.168.68.1'
 DNS = '8.8.8.8'
 
 # Web server settings
